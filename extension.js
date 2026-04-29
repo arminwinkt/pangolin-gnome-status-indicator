@@ -52,13 +52,8 @@ class PangolinToggle extends QuickSettings.QuickMenuToggle {
             if (success) {
                 this._pollStatus();
             } else {
-                Main.panel.closeQuickSettings();
-                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
-                    this._spawnCommand(
-                        ['ptyxis', '--', PANGOLIN_BINARY, 'up'],
-                        () => this._rapidPoll()
-                    );
-                    return GLib.SOURCE_REMOVE;
+                this._spawnWithSudo([PANGOLIN_BINARY, 'up'], () => {
+                    this._rapidPoll();
                 });
             }
         });
@@ -127,6 +122,33 @@ class PangolinToggle extends QuickSettings.QuickMenuToggle {
                     this._statusSection.addMenuItem(item);
                 }
             }
+        }
+    }
+
+    _spawnWithSudo(argv, callback) {
+        const askpassPath = GLib.build_filenamev([
+            this._extension.path, 'askpass.sh']);
+        const envp = GLib.get_environ();
+        envp.push(`SUDO_ASKPASS=${askpassPath}`);
+
+        try {
+            const [, pid] = GLib.spawn_async(
+                null,
+                ['sudo', '-A', ...argv],
+                envp,
+                GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
+                null
+            );
+
+            GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, (pid, waitStatus) => {
+                GLib.spawn_close_pid(pid);
+                let success = false;
+                try { success = GLib.spawn_check_exit_status(waitStatus); } catch {}
+                if (callback) callback(success);
+            });
+        } catch (e) {
+            log(`Pangolin extension: sudo command failed: ${e.message}`);
+            if (callback) callback(false);
         }
     }
 

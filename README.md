@@ -26,3 +26,4 @@ Then restart GNOME Shell or log out and back in.
 
 - GNOME Shell 45+
 - [Pangolin](https://github.com/fosrl/pangolin) VPN client installed and in your `PATH`
+- `sudo` and `zenity` (for the graphical password prompt when connecting)
