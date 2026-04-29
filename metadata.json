@@ -1,0 +1,7 @@
+{
+    "uuid": "pangolin-indicator@yetanother.at",
+    "name": "Pangolin VPN Status",
+    "description": "Status indicator and quick toggle for the Pangolin VPN client",
+    "shell-version": ["45", "46", "47", "48", "49", "50"],
+    "url": "https://github.com/fosrl/pangolin"
+}
