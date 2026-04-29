@@ -4,6 +4,8 @@ A GNOME Shell extension that adds a status indicator and quick toggle for the [P
 
 Shows connection status in the system panel and provides connect/disconnect controls from the quick settings menu.
 
+![Screenshot](screenshot.png)
+
 ## Install
 
 ```bash
