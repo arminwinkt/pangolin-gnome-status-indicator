@@ -32,7 +32,7 @@ class PangolinToggle extends QuickSettings.QuickMenuToggle {
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
         this.menu.addAction('Open Logs', () => {
-            this._spawnCommand(['gnome-terminal', '--', 'pangolin', 'logs']);
+            this._spawnCommand(['ptyxis', '--', PANGOLIN_BINARY, 'logs']);
         });
 
         this.connect('clicked', () => this._onToggle());
@@ -49,13 +49,17 @@ class PangolinToggle extends QuickSettings.QuickMenuToggle {
     _connect() {
         this._setStatusConnecting();
         this._spawnCommand([PANGOLIN_BINARY, 'up', '--silent'], (success) => {
-            if (!success) {
-                this._spawnCommand(
-                    ['gnome-terminal', '--', PANGOLIN_BINARY, 'up'],
-                    () => this._pollStatus()
-                );
-            } else {
+            if (success) {
                 this._pollStatus();
+            } else {
+                Main.panel.closeQuickSettings();
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+                    this._spawnCommand(
+                        ['ptyxis', '--', PANGOLIN_BINARY, 'up'],
+                        () => this._rapidPoll()
+                    );
+                    return GLib.SOURCE_REMOVE;
+                });
             }
         });
     }
@@ -63,7 +67,30 @@ class PangolinToggle extends QuickSettings.QuickMenuToggle {
     _disconnect() {
         this._setStatusConnecting();
         this._spawnCommand([PANGOLIN_BINARY, 'down'], () => {
-            this._pollStatus();
+            this._rapidPoll();
+        });
+    }
+
+    _rapidPoll() {
+        let attempts = 0;
+        const maxAttempts = 15;
+        GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 2, () => {
+            attempts++;
+            try {
+                const [, stdout, , exitStatus] = GLib.spawn_command_line_sync(
+                    `${PANGOLIN_BINARY} status --json`
+                );
+                const output = new TextDecoder().decode(stdout).trim();
+                if (exitStatus === 0 && output && !output.includes('No client is currently running')) {
+                    this._extension._indicator._pollStatus();
+                    return GLib.SOURCE_REMOVE;
+                }
+            } catch {}
+            if (attempts >= maxAttempts) {
+                this._extension._indicator._pollStatus();
+                return GLib.SOURCE_REMOVE;
+            }
+            return GLib.SOURCE_CONTINUE;
         });
     }
 
